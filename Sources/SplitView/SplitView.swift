@@ -18,6 +18,7 @@ public class SliderControlViewModel: ObservableObject {
 
     public var middle: CGFloat
     public var range: ClosedRange<CGFloat>
+    public var minimumBottomHeight: CGFloat = 100
 
     public init(middle: CGFloat = 0.5, range: ClosedRange<CGFloat> = 0.2...0.8) {
         precondition(range.lowerBound >= 0, "Range lower bound must be positive")
@@ -94,6 +95,16 @@ public struct SplitView<ControlView: View, TopContent: View, BottomContent: View
         self.topView = topView()
         self.bottomView = bottomView()
     }
+    
+    func getHeight(geometry:GeometryProxy ) -> CGFloat {
+        
+        var height = geometry.size.height * self.viewModel.middle - self.viewModel.current
+        if height < viewModel.minimumBottomHeight {
+            height = viewModel.minimumBottomHeight
+        }
+        
+        return height
+    }
 
     public var body: some View {
         GeometryReader { geometry in
@@ -106,15 +117,15 @@ public struct SplitView<ControlView: View, TopContent: View, BottomContent: View
                     Group {
                         self.bottomView
                             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-                            .frame(height: geometry.size.height * self.viewModel.middle - self.viewModel.current)
+                            .frame(height: getHeight(geometry: geometry))
                     }
-                }
+                }.padding(0)
                 SliderControl(viewModel: self.viewModel, geometry: geometry) {
                     Group {
                         self.controlView
                     }
                 }
-            } // ZStack
+            }// ZStack
         } // GeometryReader
     }
 }
