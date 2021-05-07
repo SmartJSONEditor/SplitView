@@ -9,29 +9,30 @@
 import SwiftUI
 
 public class SliderControlViewModel: ObservableObject {
-
     @Published public var current: CGFloat = 0
     @Published public var previous: CGFloat = 0
 
     @Published public var isMax = false
     @Published public var isMin = false
 
+    @Published public var isExpanded: Bool = true
+
     public var middle: CGFloat
     public var range: ClosedRange<CGFloat>
     public var minimumBottomHeight: CGFloat = 100
 
-    public init(middle: CGFloat = 0.5, range: ClosedRange<CGFloat> = 0.2...0.8) {
+    public init(middle: CGFloat = 0.5, range: ClosedRange<CGFloat> = 0.2 ... 0.8, isExpanded: Bool = true) {
         precondition(range.lowerBound >= 0, "Range lower bound must be positive")
         precondition(range.upperBound >= 0, "Range upper bound must be positive")
         precondition(range.lowerBound < middle && range.upperBound > middle, "Middle value must be in range: \(range)")
 
         self.middle = middle
         self.range = range
+        self.isExpanded = isExpanded
     }
 }
 
 struct SliderControl<Content: View>: View {
-
     @ObservedObject var viewModel: SliderControlViewModel
 
     var geometry: GeometryProxy
@@ -48,12 +49,12 @@ struct SliderControl<Content: View>: View {
 
     var body: some View {
         VStack { content }
-        .offset(y: geometry.size.height * (0.5 - viewModel.middle) + viewModel.current)
-        .gesture(
-            DragGesture()
-                .onChanged(onDragChanged)
-                .onEnded(onDragEnded)
-        )
+            .offset(y: geometry.size.height * (0.5 - viewModel.middle) + viewModel.current)
+            .gesture(
+                DragGesture()
+                    .onChanged(onDragChanged)
+                    .onEnded(onDragEnded)
+            )
     }
 
     fileprivate var maxLimit: CGFloat {
@@ -78,7 +79,6 @@ struct SliderControl<Content: View>: View {
 }
 
 public struct SplitView<ControlView: View, TopContent: View, BottomContent: View>: View {
-
     @ObservedObject public var viewModel: SliderControlViewModel
 
     public var controlView: ControlView
@@ -95,14 +95,13 @@ public struct SplitView<ControlView: View, TopContent: View, BottomContent: View
         self.topView = topView()
         self.bottomView = bottomView()
     }
-    
-    func getHeight(geometry:GeometryProxy ) -> CGFloat {
-        
-        var height = geometry.size.height * self.viewModel.middle - self.viewModel.current
+
+    func getHeight(geometry: GeometryProxy) -> CGFloat {
+        var height = geometry.size.height * viewModel.middle - viewModel.current
         if height < viewModel.minimumBottomHeight {
             height = viewModel.minimumBottomHeight
         }
-        
+
         return height
     }
 
@@ -114,18 +113,31 @@ public struct SplitView<ControlView: View, TopContent: View, BottomContent: View
                         self.topView
                             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                     }
-                    Group {
-                        self.bottomView
-                            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-                            .frame(height: getHeight(geometry: geometry))
+                    if viewModel.isExpanded {
+                        Group {
+                            self.bottomView
+                                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                                .frame(height: getHeight(geometry: geometry))
+                        }
                     }
                 }.padding(0)
-                SliderControl(viewModel: self.viewModel, geometry: geometry) {
-                    Group {
-                        self.controlView
+                if viewModel.isExpanded {
+                    SliderControl(viewModel: self.viewModel, geometry: geometry) {
+                        Group {
+                            self.controlView
+                        }
                     }
                 }
-            }// ZStack
+                Button(action: {
+                    viewModel.isExpanded.toggle()
+                }, label: {
+                    Image(systemName: viewModel.isExpanded ? "arrow.down.circle" : "arrow.up.circle")
+                })
+                .buttonStyle(PlainButtonStyle())
+                .frame(width: 24, height: 24, alignment: /*@START_MENU_TOKEN@*/.center/*@END_MENU_TOKEN@*/)
+                .position(x: geometry.size.width - 20)
+                .offset(y: viewModel.isExpanded ? geometry.size.height - getHeight(geometry: geometry) : geometry.size.height - 24)
+            } // ZStack
         } // GeometryReader
     }
 }
